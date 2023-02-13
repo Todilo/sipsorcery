@@ -16,6 +16,7 @@
 //-----------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
@@ -26,8 +27,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
 using Serilog.Extensions.Logging;
-using SIPSorcery.Net;
 using SIPSorcery.Media;
+using SIPSorcery.Net;
 using SIPSorceryMedia.Abstractions;
 using SIPSorceryMedia.FFmpeg;
 using WebSocketSharp.Server;
@@ -41,8 +42,16 @@ namespace demo
         public string RestSignalingServer { get; set; }
     }
 
+
     class Program
     {
+
+
+        private TimeSpan ExecutionInterval = TimeSpan.FromSeconds(10);
+
+        // TODO: Rename to something more meaningful (we don't know what the code does)
+        private Stopwatch stopwatch;
+
         private const string ffmpegLibFullPath = @"C:\ffmpeg-4.4.1-full_build-shared\bin"; //  /!\ A valid path to FFmpeg library
 
         private const int WEBSOCKET_PORT = 8081;
@@ -53,6 +62,25 @@ namespace demo
 
         private static int _frameCount = 0;
         private static DateTime _startTime;
+        public static void InitTimer()
+        {
+            System.Timers.Timer t = new System.Timers.Timer(5000);
+            t.Elapsed += T_Elapsed; ;
+            t.AutoReset = true;
+            t.Enabled = true;
+
+        }
+
+        private static void T_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (testPatternSource == null)
+            {
+                return;
+            }
+
+            testPatternSource.ToggleResolution();
+        }
+
 
         static async Task Main(string[] args)
         {
@@ -113,10 +141,12 @@ namespace demo
                 exitMre.Set();
             };
 
+
             // Wait for a signal saying the call failed, was cancelled with ctrl-c or completed.
             exitMre.WaitOne();
         }
 
+        static VideoTestVariableResoultionWithTestPatternSource testPatternSource;
         private static Task<RTCPeerConnection> CreatePeerConnection(X509Certificate2 cert)
         {
             //RTCConfiguration config = new RTCConfiguration
@@ -129,8 +159,10 @@ namespace demo
 
             //var testPatternSource = new VideoTestPatternSource(new SIPSorceryMedia.Encoders.VideoEncoder());
             SIPSorceryMedia.FFmpeg.FFmpegInit.Initialise(SIPSorceryMedia.FFmpeg.FfmpegLogLevelEnum.AV_LOG_VERBOSE, ffmpegLibFullPath, logger);
-            var testPatternSource = new VideoTestPatternSource(new FFmpegVideoEncoder());
+            testPatternSource = new VideoTestVariableResoultionWithTestPatternSource(new FFmpegVideoEncoder());
             testPatternSource.SetFrameRate(TEST_PATTERN_FRAMES_PER_SECOND);
+
+            InitTimer();
             //testPatternSource.SetMaxFrameRate(true);
             //var videoEndPoint = new SIPSorceryMedia.FFmpeg.FFmpegVideoEndPoint();
             //videoEndPoint.RestrictFormats(format => format.Codec == VideoCodecsEnum.H264);
@@ -145,7 +177,7 @@ namespace demo
             testPatternSource.OnVideoSourceRawSample += MesasureTestPatternSourceFrameRate;
             testPatternSource.OnVideoSourceEncodedSample += pc.SendVideo;
             pc.OnVideoFormatsNegotiated += (formats) => testPatternSource.SetVideoSourceFormat(formats.First());
-            
+
             pc.onconnectionstatechange += async (state) =>
             {
                 logger.LogDebug($"Peer connection state change to {state}.");
@@ -172,12 +204,12 @@ namespace demo
             pc.oniceconnectionstatechange += (state) => logger.LogDebug($"ICE connection state change to {state}.");
             pc.onsignalingstatechange += () =>
             {
-                if(pc.signalingState == RTCSignalingState.have_local_offer)
+                if (pc.signalingState == RTCSignalingState.have_local_offer)
                 {
                     logger.LogDebug($"Local SDP set, type {pc.localDescription.type}.");
                     logger.LogDebug(pc.localDescription.sdp.ToString());
                 }
-                else if(pc.signalingState == RTCSignalingState.have_remote_offer)
+                else if (pc.signalingState == RTCSignalingState.have_remote_offer)
                 {
                     logger.LogDebug($"Remote SDP set, type {pc.remoteDescription.type}.");
                     logger.LogDebug(pc.remoteDescription.sdp.ToString());
@@ -189,7 +221,7 @@ namespace demo
 
         private static void MesasureTestPatternSourceFrameRate(uint durationMilliseconds, int width, int height, byte[] sample, VideoPixelFormatsEnum pixelFormat)
         {
-            if(_startTime == DateTime.MinValue)
+            if (_startTime == DateTime.MinValue)
             {
                 _startTime = DateTime.Now;
             }

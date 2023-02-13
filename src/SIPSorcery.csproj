@@ -9,8 +9,17 @@
   <ItemGroup>
     <None Remove="core\SIPEvents\Dialog\EventDialogSchema.xsd" />
     <None Remove="core\SIPEvents\Presence\PIDFSchema.xsd" />
+    <None Remove="media\320x240.bgr" />
+    <None Remove="media\320x240.bmp" />
+    <None Remove="media\480x640.bgr" />
+    <None Remove="media\500x500.bgr" />
+    <None Remove="media\640x480.bgr" />
+    <None Remove="media\640x480.bmp" />
     <None Remove="media\Macroform_-_Simplicity.raw" />
     <None Remove="media\testpattern.i420" />
+    <EmbeddedResource Include="media\500x500.bgr" />
+    <EmbeddedResource Include="media\640x480.bgr" />
+    <EmbeddedResource Include="media\640x480.bmp" />
     <EmbeddedResource Include="media\Macroform_-_Simplicity.raw" />
     <EmbeddedResource Include="media\testpattern.i420" />
     <None Include="icon.png" Pack="true" PackagePath="" />
